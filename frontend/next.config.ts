@@ -7,8 +7,9 @@ const nextConfig: NextConfig = {
   turbopack: {
     root: path.join(__dirname),
   },
-  // Emit a self-contained server bundle for a small production Docker image.
-  output: 'standalone',
+  // Standalone output is for the Docker image; on Vercel (VERCEL=1) use the
+  // native build — 'standalone' + Turbopack breaks Vercel's file tracing.
+  output: process.env.VERCEL ? undefined : 'standalone',
 };
 
 export default nextConfig;
