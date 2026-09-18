@@ -1,0 +1,22 @@
+name: keep-alive
+
+# Pings the free-tier Render backends every ~10 minutes so they don't sleep
+# (Render spins down after ~15 min idle, causing a ~60s cold start).
+on:
+  schedule:
+    - cron: "*/10 * * * *"
+  workflow_dispatch: {}
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ping backends
+        run: |
+          for url in \
+            "https://ai-search-engine-api-tz9f.onrender.com/api/v1/health" \
+            "https://chatterbox-api-vmkg.onrender.com/api/health" \
+            "https://expense-tracker-demo-api.onrender.com/" ; do
+            code=$(curl -s -o /dev/null -w "%{http_code}" -m 90 "$url" || echo "000")
+            echo "$code  $url"
+          done
