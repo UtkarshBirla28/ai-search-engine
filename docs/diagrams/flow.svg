@@ -1,0 +1,113 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1180 880" font-family="'Segoe UI', system-ui, -apple-system, sans-serif">
+  <defs>
+    <marker id="a2" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0 0 L10 5 L0 10 z" fill="#64748b"/>
+    </marker>
+    <style>
+      .b{rx:12;ry:12;stroke-width:1.5;}
+      .t{font-size:15px;font-weight:700;fill:#0f172a;}
+      .s{font-size:11.5px;fill:#475569;}
+      .e{stroke:#94a3b8;stroke-width:1.8;fill:none;marker-end:url(#a2);}
+      .el{font-size:11px;fill:#64748b;font-weight:600;}
+    </style>
+  </defs>
+
+  <rect x="0" y="0" width="1180" height="880" fill="#f8fafc"/>
+  <text x="48" y="52" font-size="26" font-weight="800" fill="#0f172a">Request Flows — Indexing &amp; Query</text>
+
+  <!-- lane headers -->
+  <rect x="90" y="92" width="440" height="40" rx="10" fill="#f5f3ff" stroke="#7c3aed"/>
+  <text x="310" y="118" text-anchor="middle" font-size="15" font-weight="800" fill="#6d28d9">INDEXING PIPELINE  (async crawl)</text>
+  <rect x="650" y="92" width="440" height="40" rx="10" fill="#eef2ff" stroke="#6366f1"/>
+  <text x="870" y="118" text-anchor="middle" font-size="15" font-weight="800" fill="#4f46e5">QUERY PIPELINE  (search &amp; answer)</text>
+
+  <!-- ============ LEFT LANE ============ -->
+  <g>
+    <rect class="b" x="160" y="156" width="300" height="52" fill="#eef2ff" stroke="#6366f1"/>
+    <text class="t" x="180" y="180">POST /crawl</text>
+    <text class="s" x="180" y="198">urls · maxDepth · maxPages</text>
+
+    <rect class="b" x="160" y="244" width="300" height="52" fill="#ecfeff" stroke="#0891b2"/>
+    <text class="t" x="180" y="268">Enqueue BullMQ job</text>
+    <text class="s" x="180" y="286">→ 202 Accepted + jobId</text>
+
+    <rect class="b" x="160" y="332" width="300" height="52" fill="#f5f3ff" stroke="#7c3aed"/>
+    <text class="t" x="180" y="356">Worker picks up job</text>
+    <text class="s" x="180" y="374">retries · backoff · progress</text>
+
+    <rect class="b" x="160" y="420" width="300" height="52" fill="#ffffff" stroke="#334155"/>
+    <text class="t" x="180" y="444">Crawl engine</text>
+    <text class="s" x="180" y="462">robots.txt · BFS · dedup · politeness</text>
+
+    <rect class="b" x="160" y="508" width="300" height="52" fill="#ffffff" stroke="#334155"/>
+    <text class="t" x="180" y="532">Parse (cheerio)</text>
+    <text class="s" x="180" y="550">title · text · links · metadata</text>
+
+    <rect class="b" x="160" y="596" width="300" height="52" fill="#ecfeff" stroke="#0891b2"/>
+    <text class="t" x="180" y="620">Store page + link graph</text>
+    <text class="s" x="180" y="638">Postgres transaction (upsert)</text>
+
+    <rect class="b" x="160" y="684" width="300" height="52" fill="#ecfeff" stroke="#0891b2"/>
+    <text class="t" x="180" y="708">Embed → pgvector</text>
+    <text class="s" x="180" y="726">batched · best-effort</text>
+
+    <rect class="b" x="160" y="772" width="300" height="52" fill="#f0fdf4" stroke="#16a34a"/>
+    <text class="t" x="180" y="796">Bump index version</text>
+    <text class="s" x="180" y="814">invalidates cached results</text>
+
+    <path class="e" d="M310 208 L310 244"/>
+    <path class="e" d="M310 296 L310 332"/>
+    <path class="e" d="M310 384 L310 420"/>
+    <path class="e" d="M310 472 L310 508"/>
+    <path class="e" d="M310 560 L310 596"/>
+    <path class="e" d="M310 648 L310 684"/>
+    <path class="e" d="M310 736 L310 772"/>
+  </g>
+
+  <!-- ============ RIGHT LANE ============ -->
+  <g>
+    <rect class="b" x="720" y="156" width="300" height="52" fill="#eef2ff" stroke="#6366f1"/>
+    <text class="t" x="740" y="180">GET /search</text>
+    <text class="s" x="740" y="198">q · mode · page</text>
+
+    <rect class="b" x="720" y="244" width="300" height="52" fill="#fffbeb" stroke="#d97706"/>
+    <text class="t" x="740" y="268">Cache lookup</text>
+    <text class="s" x="740" y="286">key includes index version</text>
+
+    <rect class="b" x="720" y="332" width="300" height="52" fill="#ffffff" stroke="#334155"/>
+    <text class="t" x="740" y="356">Embed query</text>
+    <text class="s" x="740" y="374">cached per model (semantic/hybrid)</text>
+
+    <rect class="b" x="720" y="420" width="300" height="52" fill="#ecfeff" stroke="#0891b2"/>
+    <text class="t" x="740" y="444">Hybrid — one SQL query</text>
+    <text class="s" x="740" y="462">FTS ⋃ vector KNN, fused by RRF</text>
+
+    <rect class="b" x="720" y="508" width="300" height="52" fill="#ffffff" stroke="#334155"/>
+    <text class="t" x="740" y="532">Ranked results + snippets</text>
+    <text class="s" x="740" y="550">highlighted &lt;mark&gt; · accurate total</text>
+
+    <rect class="b" x="720" y="596" width="300" height="52" fill="#eef2ff" stroke="#6366f1"/>
+    <text class="t" x="740" y="620">GET /answer → top-K</text>
+    <text class="s" x="740" y="638">retrieve + fetch page content</text>
+
+    <rect class="b" x="720" y="684" width="300" height="52" fill="#fff7ed" stroke="#d97706"/>
+    <text class="t" x="740" y="708">LLM answer  ·  or extractive</text>
+    <text class="s" x="740" y="726">OpenAI (retry) → fallback summary</text>
+
+    <rect class="b" x="720" y="772" width="300" height="52" fill="#f0fdf4" stroke="#16a34a"/>
+    <text class="t" x="740" y="796">Answer + numbered citations</text>
+    <text class="s" x="740" y="814">[1][2] → sources</text>
+
+    <path class="e" d="M870 208 L870 244"/>
+    <path class="e" d="M870 296 L870 332"/>
+    <path class="e" d="M870 384 L870 420"/>
+    <path class="e" d="M870 472 L870 508"/>
+    <path class="e" d="M870 560 L870 596"/>
+    <path class="e" d="M870 648 L870 684"/>
+    <path class="e" d="M870 736 L870 772"/>
+  </g>
+
+  <!-- cross: index version invalidates cache -->
+  <path class="e" d="M460 798 C 600 798, 620 270, 720 270" stroke="#16a34a" stroke-dasharray="6 5"/>
+  <text class="el" x="512" y="540" fill="#16a34a">invalidate cache</text>
+</svg>

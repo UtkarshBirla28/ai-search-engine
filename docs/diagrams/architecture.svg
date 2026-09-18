@@ -1,0 +1,104 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1180 720" font-family="'Segoe UI', system-ui, -apple-system, sans-serif">
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0 0 L10 5 L0 10 z" fill="#64748b"/>
+    </marker>
+    <style>
+      .card{rx:14;ry:14;stroke-width:1.5;}
+      .lbl{font-size:16px;font-weight:700;fill:#0f172a;}
+      .sub{font-size:12.5px;fill:#475569;}
+      .edge{stroke:#94a3b8;stroke-width:1.6;fill:none;marker-end:url(#arrow);}
+      .edgelbl{font-size:11.5px;fill:#64748b;font-weight:600;}
+      .mono{font-family:'SF Mono',ui-monospace,Consolas,monospace;}
+    </style>
+  </defs>
+
+  <rect x="0" y="0" width="1180" height="720" fill="#f8fafc"/>
+  <text x="48" y="52" font-size="26" font-weight="800" fill="#0f172a">AI Search Engine — System Architecture</text>
+  <text x="48" y="78" font-size="14" fill="#64748b">Crawl · index · hybrid search · cited AI answers  ·  Redis-backed queue / cache / rate-limit</text>
+
+  <!-- Client -->
+  <rect class="card" x="48" y="150" width="220" height="120" fill="#eef2ff" stroke="#6366f1"/>
+  <text class="lbl" x="72" y="185">Next.js UI</text>
+  <text class="sub" x="72" y="210">search · AI answer</text>
+  <text class="sub" x="72" y="230">autocomplete · admin</text>
+  <text class="sub mono" x="72" y="252" fill="#6366f1">React 19 · Tailwind</text>
+
+  <!-- API container -->
+  <rect x="360" y="120" width="360" height="360" rx="18" fill="#ffffff" stroke="#cbd5e1" stroke-dasharray="5 4"/>
+  <text x="380" y="146" font-size="13" font-weight="700" fill="#64748b">EXPRESS API  ·  /api/v1</text>
+
+  <rect class="card" x="388" y="164" width="304" height="78" fill="#f1f5f9" stroke="#334155"/>
+  <text class="lbl" x="410" y="196">Routes → Controllers</text>
+  <text class="sub" x="410" y="220">Zod validation · rate limit · error envelope</text>
+
+  <rect class="card" x="388" y="262" width="304" height="78" fill="#f1f5f9" stroke="#334155"/>
+  <text class="lbl" x="410" y="294">Services</text>
+  <text class="sub" x="410" y="318">search · answer · ingest · embeddings · cache</text>
+
+  <rect class="card" x="388" y="360" width="304" height="78" fill="#f1f5f9" stroke="#334155"/>
+  <text class="lbl" x="410" y="392">Repositories</text>
+  <text class="sub" x="410" y="416">all SQL — FTS · vectors · link graph</text>
+
+  <!-- internal vertical arrows -->
+  <path class="edge" d="M540 242 L540 262"/>
+  <path class="edge" d="M540 340 L540 360"/>
+
+  <!-- Worker -->
+  <rect class="card" x="388" y="520" width="304" height="96" fill="#f5f3ff" stroke="#7c3aed"/>
+  <text class="lbl" x="410" y="552">Crawl Worker</text>
+  <text class="sub" x="410" y="576">BullMQ consumer · retries · progress</text>
+  <text class="sub mono" x="410" y="598" fill="#7c3aed">scale: --scale worker=N</text>
+
+  <!-- Data stores -->
+  <rect class="card" x="812" y="150" width="320" height="92" fill="#ecfeff" stroke="#0891b2"/>
+  <text class="lbl" x="836" y="184">Postgres + pgvector</text>
+  <text class="sub" x="836" y="208">pages · links · tsvector (GIN)</text>
+  <text class="sub" x="836" y="228">embeddings (HNSW)</text>
+
+  <rect class="card" x="812" y="266" width="320" height="92" fill="#ecfeff" stroke="#0891b2"/>
+  <text class="lbl" x="836" y="300">Redis</text>
+  <text class="sub" x="836" y="324">BullMQ queue · response cache</text>
+  <text class="sub" x="836" y="344">distributed rate limit</text>
+
+  <rect class="card" x="812" y="382" width="320" height="86" fill="#fff7ed" stroke="#d97706"/>
+  <text class="lbl" x="836" y="416">OpenAI</text>
+  <text class="sub" x="836" y="440">embeddings + chat</text>
+  <text class="sub" x="836" y="459">(optional · retry w/ backoff)</text>
+
+  <!-- edges -->
+  <path class="edge" d="M268 200 L388 195"/>
+  <text class="edgelbl" x="286" y="188">HTTP JSON</text>
+
+  <path class="edge" d="M692 400 C 760 400, 760 210, 812 200"/>
+  <text class="edgelbl mono" x="712" y="330">SQL</text>
+
+  <path class="edge" d="M692 300 L812 305"/>
+  <text class="edgelbl" x="706" y="292">cache / embed</text>
+
+  <path class="edge" d="M692 320 C 750 360, 760 410, 812 420"/>
+  <text class="edgelbl" x="700" y="388">AI</text>
+
+  <path class="edge" d="M692 180 C 760 150, 770 270, 812 300"/>
+  <text class="edgelbl" x="704" y="150">enqueue job</text>
+
+  <path class="edge" d="M900 358 C 880 460, 740 470, 692 545"/>
+  <text class="edgelbl" x="770" y="470">consume jobs</text>
+
+  <path class="edge" d="M540 520 L540 438" stroke-dasharray="5 4"/>
+  <text class="edgelbl" x="548" y="500">reuses services</text>
+
+  <!-- legend -->
+  <g transform="translate(48,632)">
+    <rect x="0" y="0" width="16" height="16" rx="4" fill="#eef2ff" stroke="#6366f1"/>
+    <text class="sub" x="24" y="13">Client</text>
+    <rect x="120" y="0" width="16" height="16" rx="4" fill="#f1f5f9" stroke="#334155"/>
+    <text class="sub" x="144" y="13">API layers</text>
+    <rect x="260" y="0" width="16" height="16" rx="4" fill="#f5f3ff" stroke="#7c3aed"/>
+    <text class="sub" x="284" y="13">Worker</text>
+    <rect x="380" y="0" width="16" height="16" rx="4" fill="#ecfeff" stroke="#0891b2"/>
+    <text class="sub" x="404" y="13">Data / Infra</text>
+    <rect x="520" y="0" width="16" height="16" rx="4" fill="#fff7ed" stroke="#d97706"/>
+    <text class="sub" x="544" y="13">External (optional)</text>
+  </g>
+</svg>

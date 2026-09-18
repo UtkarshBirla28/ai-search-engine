@@ -1,0 +1,86 @@
+# Full-stack local/production-like run: Postgres (pgvector) + backend + frontend.
+#
+#   docker compose up --build
+#   → frontend  http://localhost:3000
+#   → backend   http://localhost:5000/api/v1
+#
+# Set OPENAI_API_KEY (and EMBEDDING_PROVIDER=openai, EMBEDDING_DIM=1536) in a
+# .env file next to this one to enable OpenAI embeddings + LLM answers. Without a
+# key it runs with offline `hash` embeddings and extractive answers.
+services:
+  postgres:
+    image: pgvector/pgvector:pg16
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: search
+      POSTGRES_PASSWORD: search
+      POSTGRES_DB: ai_search
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U search -d ai_search']
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    healthcheck:
+      test: ['CMD', 'redis-cli', 'ping']
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  backend:
+    build: ./backend
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    environment: &backend_env
+      NODE_ENV: production
+      PORT: 5000
+      CORS_ORIGIN: http://localhost:3000
+      DATABASE_URL: postgres://search:search@postgres:5432/ai_search
+      REDIS_URL: redis://redis:6379
+      # The API also runs a worker in-process; the dedicated `worker` service adds
+      # capacity. Set QUEUE_RUN_IN_PROCESS=false to make the API enqueue-only.
+      QUEUE_RUN_IN_PROCESS: ${QUEUE_RUN_IN_PROCESS:-true}
+      # AI config — override via a .env file next to this compose file.
+      EMBEDDING_PROVIDER: ${EMBEDDING_PROVIDER:-hash}
+      EMBEDDING_DIM: ${EMBEDDING_DIM:-256}
+      LLM_PROVIDER: ${LLM_PROVIDER:-none}
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+    ports:
+      - '5000:5000'
+
+  # Dedicated crawl worker(s) — scale with `docker compose up --scale worker=3`.
+  worker:
+    build: ./backend
+    restart: unless-stopped
+    command: ['node', 'dist/worker.js']
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    environment:
+      <<: *backend_env
+      QUEUE_RUN_IN_PROCESS: 'false'
+
+  frontend:
+    build:
+      context: ./frontend
+      args:
+        NEXT_PUBLIC_API_BASE_URL: http://localhost:5000/api/v1
+    restart: unless-stopped
+    depends_on:
+      - backend
+    ports:
+      - '3000:3000'
+
+volumes:
+  pgdata:
