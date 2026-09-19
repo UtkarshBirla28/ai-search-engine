@@ -11,6 +11,8 @@ dependencies (Redis, an LLM key) are absent.
 - **Data:** Postgres 16 + **pgvector** (FTS + vectors + link graph)
 - **Infra:** Redis (BullMQ queue · cache · rate limit) · OpenAI (embeddings + chat)
 
+> 🚀 **Live demo:** [web app](https://ai-search-engine-utkarshs-projects-621a47b8.vercel.app) · [API health](https://ai-search-engine-api-tz9f.onrender.com/api/v1/health) — deployed on Vercel + Render + Neon. See the [README](../README.md) for quick start.
+
 > 📊 **Visual version:** open [`architecture.html`](./architecture.html) in a browser for
 > interactive, themed diagrams. Image exports live in [`diagrams/`](./diagrams/).
 

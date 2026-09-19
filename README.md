@@ -1,48 +1,227 @@
-# AI Search Engine
+<div align="center">
 
-A from-scratch, full-stack **AI search engine**: it crawls the web, indexes pages
-in Postgres, and searches them with **hybrid keyword + semantic** ranking — then
-puts a **Perplexity-style AI answer with citations** on top.
+# 🔎 AI Search Engine
 
-- **Backend** — Node + Express + TypeScript. Real web crawler, Postgres full-text
-  search (`tsvector`/`ts_rank_cd`), `pg_trgm` fuzzy, **pgvector** semantic search,
-  and single-query Reciprocal-Rank-Fusion hybrid ranking. Cited answers via OpenAI
-  (with a non-LLM extractive fallback). **Redis** powers an async crawl **job
-  queue** (BullMQ), response **caching**, and **distributed rate limiting**.
-- **Frontend** — Next.js 16 (App Router, TypeScript, Tailwind v4). Search UI with
-  an AI answer box, inline citations, autocomplete, mode toggle
-  (auto/hybrid/semantic/keyword), pagination, and an admin page that crawls sites
-  with a **live progress bar**.
+**A from-scratch, full-stack search engine that crawls the web, indexes pages in Postgres, and answers questions with a cited, Perplexity-style AI answer on top.**
+
+Not an API wrapper — a real crawler, a real inverted index, real vector search, and hybrid ranking fused in a single SQL query.
+
+[![Live Demo](https://img.shields.io/badge/Live_Demo-Try_it-000000?style=for-the-badge&logo=vercel&logoColor=white)](https://ai-search-engine-utkarshs-projects-621a47b8.vercel.app)
+&nbsp;
+[![Architecture](https://img.shields.io/badge/Docs-Architecture-0891b2?style=for-the-badge&logo=readthedocs&logoColor=white)](./docs/ARCHITECTURE.md)
+
+![TypeScript](https://img.shields.io/badge/TypeScript-3178C6?logo=typescript&logoColor=white)
+![Node.js](https://img.shields.io/badge/Node.js-5FA04E?logo=nodedotjs&logoColor=white)
+![Express](https://img.shields.io/badge/Express-000000?logo=express&logoColor=white)
+![Next.js](https://img.shields.io/badge/Next.js_16-000000?logo=nextdotjs&logoColor=white)
+![React](https://img.shields.io/badge/React_19-61DAFB?logo=react&logoColor=black)
+![Postgres](https://img.shields.io/badge/Postgres-4169E1?logo=postgresql&logoColor=white)
+![pgvector](https://img.shields.io/badge/pgvector-4169E1?logo=postgresql&logoColor=white)
+![Redis](https://img.shields.io/badge/Redis-FF4438?logo=redis&logoColor=white)
+![Tailwind](https://img.shields.io/badge/Tailwind_v4-06B6D4?logo=tailwindcss&logoColor=white)
+![Docker](https://img.shields.io/badge/Docker-2496ED?logo=docker&logoColor=white)
+
+</div>
+
+---
+
+## 🚀 Live demo
+
+| | URL |
+| --- | --- |
+| **Web app** | **https://ai-search-engine-utkarshs-projects-621a47b8.vercel.app** |
+| **API** | https://ai-search-engine-api-tz9f.onrender.com/api/v1/health |
+
+> The demo runs in **fully offline AI mode** — hashing-trick embeddings for semantic search and an extractive (non-LLM) answer generator — so it works with **zero API keys**. Add an `OPENAI_API_KEY` to switch on OpenAI embeddings + LLM answers. The corpus is pre-seeded with ~110 crawled pages.
+>
+> The API is on a free tier that sleeps after ~15 min idle — the first request may take ~50s to wake it, then it's instant.
+
+---
+
+## 📸 Screenshots
+
+<div align="center">
+
+**Search + cited AI answer**
+
+<img src="./docs/screenshots/search.png" alt="Search results with an AI answer and numbered citations" width="820" />
+
+<table>
+<tr>
+<td width="50%"><b>Home</b><br/><img src="./docs/screenshots/home.png" alt="Home page" /></td>
+<td width="50%"><b>Admin — crawl a site</b><br/><img src="./docs/screenshots/admin.png" alt="Admin crawl page" /></td>
+</tr>
+</table>
+
+</div>
+
+---
+
+## ✨ Features
+
+**Search**
+- 🔤 **Keyword** — Postgres full-text search (`tsvector` / `ts_rank_cd`), stemmed & weighted (title > description > body)
+- 🧠 **Semantic** — vector embeddings + **pgvector** cosine KNN over an **HNSW** index
+- ⚡ **Hybrid** — keyword and vector rankings fused with **Reciprocal Rank Fusion**, in **one SQL query**
+- 🩹 **Fuzzy** — `pg_trgm` `word_similarity` for typo tolerance
+- 🎯 **Auto mode** — picks the best strategy per query; plus `<mark>` snippet highlighting, autocomplete & pagination
+
+**AI answer (RAG)**
+- 💬 A concise answer with **inline `[n]` citations** synthesized from the top retrieved pages
+- 🔌 OpenAI chat when a key is present, else a **non-LLM extractive** summary — the endpoint always works
+
+**Crawler & indexing**
+- 🕷️ A polite, real web crawler: **robots.txt**, per-host delays, BFS by depth, URL dedup/normalization, retries
+- 🧩 Parses title / description / body / link graph (cheerio) and **embeds** pages into pgvector
+
+**Scale & resilience** *(all degrade gracefully with no Redis / no API key)*
+- 📦 **Async crawl queue** (BullMQ) with live progress polling — scale with `--scale worker=3`
+- 🧷 **Response caching** with automatic index-version invalidation on new crawls
+- 🚦 **Distributed rate limiting** (Redis-backed, falls back to in-memory)
+- 🛡️ Retry-with-backoff on external calls; every optional dependency has a clean fallback
+
+---
+
+## 🏗️ Architecture
+
+```mermaid
+flowchart LR
+  subgraph client["Client"]
+    UI["Next.js UI<br/>search · AI answer · admin"]
+  end
+
+  subgraph api["Express API (/api/v1)"]
+    RT["Routes → Controllers<br/>Zod validation"]
+    SVC["Services<br/>search · answer · ingest · embeddings"]
+    REPO["Repositories<br/>(all SQL)"]
+  end
+
+  WK["Crawl Worker<br/>BullMQ consumer"]
+
+  subgraph data["Data & Infra"]
+    PG[("Postgres + pgvector<br/>pages · links · vectors")]
+    RD[("Redis<br/>queue · cache · rate-limit")]
+  end
+
+  OAI["OpenAI<br/>embeddings + chat (optional)"]
+
+  UI -->|"HTTP JSON"| RT --> SVC --> REPO --> PG
+  SVC -->|"cache / query embed"| RD
+  SVC -->|"embeddings · answers"| OAI
+  RT -->|"enqueue crawl job"| RD
+  RD -->|"consume jobs"| WK
+  WK --> SVC
+
+  classDef store fill:#0891b2,stroke:#0e7490,color:#fff;
+  classDef ext fill:#d97706,stroke:#b45309,color:#fff;
+  class PG,RD store;
+  class OAI ext;
+```
+
+**Strict one-way dependency** inside the API: `routes → controllers → services → repositories → db`. All SQL lives in `repositories/`; services never touch `pg`. The crawl worker reuses the **exact same services** — the queue changes *when* work runs, not *how*.
+
+📖 **[Full architecture doc →](./docs/ARCHITECTURE.md)** — query flow, RAG flow, crawl pipeline, ER diagram, middleware order, and the resilience matrix, all as diagrams.
+
+---
+
+## 🔬 How it works
+
+```mermaid
+flowchart LR
+  A["1 · Crawl<br/>robots · BFS · dedup"] --> B["2 · Parse & store<br/>title/body/links → Postgres"]
+  B --> C["3 · Embed<br/>→ pgvector (HNSW)"]
+  C --> D["4 · Retrieve<br/>FTS + vector, fused by RRF"]
+  D --> E["5 · Answer<br/>cited summary over top sources"]
+  classDef s fill:#0891b2,stroke:#0e7490,color:#fff;
+  class B,C s;
+```
+
+1. **Crawl** — a polite crawler fetches and parses pages, storing text + the link graph in Postgres.
+2. **Index** — each page gets a generated `tsvector` (keyword) and a vector `embedding` (semantic), indexed with **GIN** and **HNSW**.
+3. **Retrieve** — full-text and vector search run together; results are fused with **Reciprocal Rank Fusion**, with a fuzzy fallback for typos.
+4. **Answer** — the top sources are summarized into a concise, **cited** answer (LLM when a key is set, extractive otherwise).
+
+### Why Reciprocal Rank Fusion?
+
+Keyword and semantic search each return a ranked list. RRF combines them using only positions — no score calibration needed:
 
 ```
-ai_search_engine/
-├── backend/          # Express REST API — crawler, search, embeddings, AI answers, queue
-├── frontend/         # Next.js UI
-├── docker-compose.yml# full stack: Postgres (pgvector) + Redis + backend + worker + frontend
-└── .github/workflows/# CI: typecheck, lint, test, build, migrate
+score(doc) = Σ  1 / (k + rank_in_list)      # k = 60
 ```
 
-### Scale / resilience (all gracefully degrade with no Redis)
+A doc ranked #1 by keyword *and* #2 by vectors beats one that's #1 in only a single list. It runs in **one SQL query** (`PageRepository.searchHybrid`): two CTEs rank the corpus (`ts_rank_cd` and `embedding <=>`), a third sums the RRF contributions, and the outer query joins back for snippets and an accurate total.
 
-- **Async crawling** — `POST /crawl` enqueues a BullMQ job and returns a `jobId`;
-  workers crawl+embed in the background with retries; poll `GET /crawl/:jobId` for
-  live progress. Run more workers with `docker compose up --scale worker=3`.
-- **Caching** — search/answer/embedding results are cached in Redis and invalidated
-  automatically when a crawl changes the corpus (index-version keys).
-- **Distributed rate limiting** — Redis-backed, so limits hold across API instances.
-- **Fault tolerance** — retry-with-backoff on OpenAI calls; every Redis/AI feature
-  degrades cleanly when unavailable (sync crawl, no cache, extractive answers).
+---
 
-## Quick start (Docker — the whole stack)
+## 🧰 Tech stack
+
+| Layer | Technology |
+| --- | --- |
+| **Frontend** | Next.js 16 (App Router) · React 19 · TypeScript · Tailwind CSS v4 |
+| **Backend** | Node.js · Express · TypeScript (ESM) · layered architecture |
+| **Database** | Postgres 16 · **pgvector** (HNSW) · `pg_trgm` · full-text search |
+| **Search** | Postgres FTS · vector KNN · Reciprocal Rank Fusion (in SQL) |
+| **Embeddings** | OpenAI · local (Xenova MiniLM) · offline hash · none — pluggable |
+| **AI answers** | OpenAI chat + non-LLM extractive fallback (RAG) |
+| **Infra** | Redis · BullMQ (queue) · Docker Compose · GitHub Actions CI |
+| **Deploy** | Vercel (frontend) · Render (backend) · Neon (Postgres + pgvector) |
+
+---
+
+## 📡 API reference
+
+Base path `/api/v1`. All responses use the envelope `{ success, data }` / `{ success, error }`.
+
+| Method | Path | Description |
+| --- | --- | --- |
+| `GET` | `/health` | Liveness + DB / Redis / queue / AI status |
+| `GET` | `/search?q=&mode=&page=&limit=` | Search — `mode` = `auto` \| `hybrid` \| `semantic` \| `fulltext` \| `fuzzy` |
+| `GET` | `/answer?q=&mode=&maxSources=` | Retrieve top pages → synthesize a **cited** AI answer |
+| `GET` | `/suggest?q=` | Autocomplete over indexed titles |
+| `POST` | `/crawl` | Crawl → parse → embed → store. `202 + jobId` (queue on) or a sync report |
+| `GET` | `/crawl/:jobId` | Async crawl job status / progress / result |
+
+<details>
+<summary><b>Example — search</b></summary>
+
+```bash
+curl "https://ai-search-engine-api-tz9f.onrender.com/api/v1/search?q=einstein%20life&mode=hybrid&limit=3"
+```
+```jsonc
+{
+  "success": true,
+  "data": {
+    "query": "einstein life", "mode": "hybrid", "total": 50, "page": 1, "limit": 3,
+    "results": [
+      { "id": 1, "title": "Quotes to Scrape", "url": "https://quotes.toscrape.com/tag/life/",
+        "snippet": "…<mark>life</mark> is what happens…", "score": 0.032, "matchType": "hybrid" }
+    ]
+  }
+}
+```
+</details>
+
+<details>
+<summary><b>Example — crawl</b></summary>
+
+```bash
+curl -X POST "…/api/v1/crawl" -H "Content-Type: application/json" \
+  -d '{ "urls": "https://quotes.toscrape.com", "maxPages": 30, "maxDepth": 3 }'
+```
+</details>
+
+---
+
+## ⚡ Quick start
+
+### Option A — Docker (the whole stack)
 
 ```bash
 docker compose up --build
-# frontend → http://localhost:3000   backend → http://localhost:5000/api/v1
+# frontend → http://localhost:3000    backend → http://localhost:5000/api/v1
 ```
 
-Runs out of the box with **offline `hash` embeddings** and **extractive answers**
-(no API key needed). To enable OpenAI semantic search + LLM answers, create a
-`.env` next to `docker-compose.yml`:
+Runs out of the box with offline `hash` embeddings + extractive answers (**no API key needed**). To enable OpenAI, drop a `.env` next to `docker-compose.yml`:
 
 ```env
 OPENAI_API_KEY=sk-...
@@ -51,54 +230,53 @@ EMBEDDING_DIM=1536
 LLM_PROVIDER=openai
 ```
 
-## Quick start (local dev)
+### Option B — Local dev
 
 ```bash
-npm install && npm run install:all      # root tool + backend + frontend deps
+npm install && npm run install:all       # root + backend + frontend deps
 
 # 1) Database (pgvector)
-cd backend && docker compose up -d      # Postgres on :5432 (POSTGRES_PORT to override)
-cp .env.example .env                     # defaults match docker-compose
+cd backend && docker compose up -d        # Postgres on :5432
+cp .env.example .env
 npm run db:migrate
 
 # 2) Run both apps (from repo root)
 cd .. && npm run dev
-# frontend → http://localhost:3000   backend → http://localhost:5000
 ```
 
-Then open the app, go to **Index sites** (`/admin`), crawl e.g.
-`https://quotes.toscrape.com`, and search.
+Then open the app → **Index sites** (`/admin`) → crawl e.g. `https://quotes.toscrape.com` → search.
 
-## API
+---
 
-| Method | Path | Description |
-| ------ | ---- | ----------- |
-| GET  | `/api/v1/health` | Liveness + DB/Redis/queue/AI status |
-| GET  | `/api/v1/search?q=…&mode=&page=&limit=` | Search: `mode` = `auto`\|`hybrid`\|`semantic`\|`fulltext`\|`fuzzy` |
-| GET  | `/api/v1/answer?q=…&mode=&maxSources=` | Retrieve top pages and synthesize a **cited** AI answer |
-| GET  | `/api/v1/suggest?q=…` | Autocomplete over indexed titles |
-| POST | `/api/v1/crawl` | Crawl → parse → embed → store. Returns `202 + jobId` when the queue is on, else a sync report |
-| GET  | `/api/v1/crawl/:jobId` | Async crawl job status / progress / result |
+## 📁 Project structure
 
-See [`backend/README.md`](./backend/README.md) for the full backend guide and
-[`backend/CLAUDE.md`](./backend/CLAUDE.md) for architecture/conventions.
+```
+ai_search_engine/
+├── backend/                 # Express REST API (TypeScript, ESM)
+│   ├── src/
+│   │   ├── routes/          #  HTTP routes  →  controllers  (Zod validation)
+│   │   ├── controllers/     #  thin request handlers
+│   │   ├── services/        #  search · answer · ingest · embeddings · crawler
+│   │   ├── repositories/    #  ALL SQL lives here (pages, links)
+│   │   ├── queue/           #  BullMQ crawl queue + worker
+│   │   └── db/              #  pool + migration runner
+│   └── migrations/          #  001 pages+FTS+pg_trgm · 002 pgvector+HNSW
+├── frontend/                # Next.js 16 UI (search, answer box, admin)
+├── docs/                    # ARCHITECTURE.md · diagrams · screenshots
+├── docker-compose.yml       # Postgres + Redis + backend + worker + frontend
+└── .github/workflows/       # CI (typecheck · lint · test · build · migrate)
+```
 
-## Documentation & diagrams
+---
 
-- **[`docs/ARCHITECTURE.md`](./docs/ARCHITECTURE.md)** — full architecture doc with
-  flowcharts (system, query, indexing, data model, request lifecycle) as Mermaid.
-- **[`docs/architecture.html`](./docs/architecture.html)** — interactive, themed
-  visual version of the diagrams (open in a browser).
-- **[`docs/diagrams/`](./docs/diagrams/)** — SVG image exports
-  ([architecture](./docs/diagrams/architecture.svg) · [request flows](./docs/diagrams/flow.svg)).
+## 📚 Documentation
 
-## How the AI search works
+- **[docs/ARCHITECTURE.md](./docs/ARCHITECTURE.md)** — the deep dive: system, query, RAG, crawl, and data-model diagrams; resilience matrix; key-file map.
+- **[docs/architecture.html](./docs/architecture.html)** — interactive, themed version of the diagrams.
+- **[backend/README.md](./backend/README.md)** — backend guide & conventions.
 
-1. **Crawl** — a polite crawler (robots.txt, per-host delays, dedup) fetches and
-   parses pages, storing title/description/body + link graph in Postgres.
-2. **Index** — each page gets a `tsvector` (keyword) and a **vector embedding**
-   (semantic), indexed with GIN and HNSW respectively.
-3. **Retrieve** — full-text and vector search run in parallel; results are fused
-   with **Reciprocal Rank Fusion** (hybrid), with a fuzzy fallback for typos.
-4. **Answer** — the top sources are handed to an LLM to write a concise, **cited**
-   answer; with no API key it falls back to an extractive summary.
+---
+
+<div align="center">
+<sub>Built by <a href="https://github.com/UtkarshBirla28">Utkarsh Birla</a> · full-stack search from crawler to cited answer.</sub>
+</div>
